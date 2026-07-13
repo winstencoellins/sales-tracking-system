@@ -29,6 +29,7 @@ import {
   SectionTitle,
   SkeletonCards,
 } from "@/components/ui";
+import { WeekTrendChart } from "@/components/week-trend-chart";
 import { useAnalytics } from "@/hooks/use-durian";
 import { formatDateInput, rupiah, toDateInputValue } from "@/lib/format";
 
@@ -36,13 +37,6 @@ function formatKg(n: number): string {
   return `${n.toLocaleString("id-ID", {
     maximumFractionDigits: 2,
   })} kg`;
-}
-
-function weekdayShort(dateKey: string): string {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("id-ID", {
-    weekday: "short",
-  });
 }
 
 function changeLabel(pct: number | null): string | null {
@@ -68,10 +62,6 @@ export default function BerandaPage() {
   const filters = useMemo(() => ({ from, to }), [from, to]);
   const { data, isLoading, error, isFetching } = useAnalytics(filters);
 
-  const maxDayRevenue = Math.max(
-    1,
-    ...(data?.last7Days.map((d) => d.revenue) ?? [0]),
-  );
   const hasAktif = (data?.kpis.txCount ?? 0) > 0;
   const changePct = data?.kpis.revenueChangePct ?? null;
   const change = changeLabel(changePct);
@@ -245,40 +235,7 @@ export default function BerandaPage() {
 
           <SectionTitle>7 hari terakhir</SectionTitle>
           <Card className="px-3.5 pt-4 pb-3">
-            <div
-              className="flex h-[120px] items-end justify-between gap-1.5"
-              role="img"
-              aria-label="Tren 7 hari"
-            >
-              {data.last7Days.map((day) => {
-                const height =
-                  day.revenue <= 0
-                    ? 4
-                    : Math.max(8, Math.round((day.revenue / maxDayRevenue) * 100));
-                const isToday =
-                  day.dateKey === data.last7Days[data.last7Days.length - 1]?.dateKey;
-                return (
-                  <div
-                    key={day.dateKey}
-                    className="flex h-full min-w-0 flex-1 flex-col items-center gap-2"
-                  >
-                    <div className="flex w-full flex-1 items-end justify-center">
-                      <div
-                        className={cx(
-                          "min-h-1 w-[70%] max-w-7 rounded-t-md rounded-b-[3px] bg-sage transition-[height] duration-[0.25s] ease-out",
-                          isToday && "bg-lime",
-                        )}
-                        style={{ height: `${height}%` }}
-                        title={`${formatDateInput(day.dateKey)}: ${rupiah(day.revenue)}`}
-                      />
-                    </div>
-                    <span className="text-[0.68rem] font-semibold capitalize text-muted-foreground">
-                      {weekdayShort(day.dateKey)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            <WeekTrendChart days={data.last7Days} />
           </Card>
 
           <SectionTitle>Bauran jenis</SectionTitle>
