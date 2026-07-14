@@ -86,12 +86,16 @@ export function DatePicker({
 
   const [view, setView] = useState(initialMonth);
 
-  useEffect(() => {
-    if (!open) return;
-    if (selected) {
+  // When the calendar opens (or the value changes while open), jump to the
+  // selected month. Adjust during render instead of an effect.
+  const viewSyncKey = open ? value : null;
+  const [syncedViewKey, setSyncedViewKey] = useState<string | null>(null);
+  if (viewSyncKey !== syncedViewKey) {
+    setSyncedViewKey(viewSyncKey);
+    if (open && selected) {
       setView({ y: selected.y, m: selected.m });
     }
-  }, [open, value]);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -196,9 +200,9 @@ export function DatePicker({
         type="button"
         id={triggerId}
         className={cx(
-          "flex w-full min-h-[52px] cursor-pointer items-center gap-2.5 rounded-box border-[1.5px] border-solid border-line bg-card px-3.5 py-3 text-left text-base font-semibold text-ink transition-[border-color,box-shadow,background] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--ink)_22%,var(--line))] focus-visible:border-ink focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(197,214,58,0.35)] [&_svg]:size-[18px] [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+          "flex w-full min-h-[52px] cursor-pointer items-center gap-2.5 rounded-box border-[1.5px] border-solid border-line bg-card px-3.5 py-3 text-left text-base font-semibold text-ink transition-[border-color,box-shadow,background] duration-150 ease-out hover:border-[color-mix(in_srgb,var(--ink)_22%,var(--line))] focus-visible:border-ink focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_rgba(197,255,102,0.35)] [&_svg]:size-[18px] [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
           open &&
-            "border-ink shadow-[0_0_0_3px_rgba(197,214,58,0.35)] outline-none",
+            "border-ink shadow-[0_0_0_3px_rgba(197,255,102,0.35)] outline-none",
         )}
         disabled={disabled}
         aria-haspopup="dialog"

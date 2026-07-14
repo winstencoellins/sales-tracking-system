@@ -9,6 +9,7 @@ export type Variety = {
 export type Customer = {
   id: string;
   name: string;
+  phoneNumber?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { transactions: number };
@@ -99,7 +100,7 @@ export type BackupPayload = {
   version: 1;
   exportedAt: string;
   varieties: Array<{ name: string; pricePerKg: number }>;
-  customers: Array<{ id: string; name: string }>;
+  customers: Array<{ id: string; name: string; phoneNumber?: string | null }>;
   transactions: Array<{
     id: string;
     customerId: string;

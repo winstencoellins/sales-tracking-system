@@ -1,8 +1,9 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import { ChevronDown, Filter, Plus, Sprout } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { CustomerSearchSelect } from "@/components/customer-search-select";
 import { DatePicker } from "@/components/date-picker";
 import { SalesEntry } from "@/components/sales-entry";
 import { TransactionEditDialog } from "@/components/transaction-edit-dialog";
@@ -18,7 +19,6 @@ import {
   Field,
   FormError,
   IconButton,
-  SelectInput,
   SkeletonCards,
 } from "@/components/ui";
 import {
@@ -27,6 +27,7 @@ import {
   useTransactions,
   useUpdateTransactionStatus,
 } from "@/hooks/use-durian";
+import { useHistoryFilterUrlState } from "@/hooks/use-url-filters";
 import {
   dateInputToEndIso,
   dateInputToStartIso,
@@ -64,18 +65,30 @@ type ConfirmAction =
   | null;
 
 export default function RiwayatPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell subtitle="Catat & lihat riwayat">
+          <SkeletonCards count={3} />
+        </AppShell>
+      }
+    >
+      <RiwayatPageContent />
+    </Suspense>
+  );
+}
+
+function RiwayatPageContent() {
   const today = toDateInputValue();
   const { data: customers } = useCustomers();
 
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
-  const [customerId, setCustomerId] = useState("");
+  const { from, to, customerId, setFilters } = useHistoryFilterUrlState(today);
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
-  const [draftFrom, setDraftFrom] = useState(today);
-  const [draftTo, setDraftTo] = useState(today);
-  const [draftCustomerId, setDraftCustomerId] = useState("");
+  const [draftFrom, setDraftFrom] = useState(from);
+  const [draftTo, setDraftTo] = useState(to);
+  const [draftCustomerId, setDraftCustomerId] = useState(customerId);
   const [filterError, setFilterError] = useState("");
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -180,9 +193,11 @@ export default function RiwayatPage() {
       setFilterError("Tanggal mulai tidak boleh setelah tanggal akhir.");
       return;
     }
-    setFrom(draftFrom);
-    setTo(draftTo);
-    setCustomerId(draftCustomerId);
+    setFilters({
+      from: draftFrom,
+      to: draftTo,
+      customerId: draftCustomerId,
+    });
     setExpandedId(null);
     setFilterOpen(false);
   }
@@ -253,7 +268,7 @@ export default function RiwayatPage() {
 
       <div
         className={cx(
-          "mb-[18px] rounded-[24px] bg-[linear-gradient(145deg,var(--sage)_0%,rgba(197,214,58,0.35)_100%)] px-5 py-[18px] shadow-soft",
+          "mb-[18px] rounded-[24px] bg-[linear-gradient(145deg,var(--sage)_0%,rgba(197,255,102,0.35)_100%)] px-5 py-[18px] shadow-soft",
           isFetching && "opacity-[0.72] transition-opacity duration-150 ease-out",
         )}
       >
@@ -383,7 +398,7 @@ export default function RiwayatPage() {
                               "shrink-0 font-mono text-base leading-[1.2] font-bold tracking-[-0.02em] tabular-nums",
                               isBatal
                                 ? "text-muted-foreground line-through"
-                                : "text-[#2f5f28]",
+                                : "text-success",
                             )}
                           >
                             {isBatal ? "−" : "+"}
@@ -498,18 +513,15 @@ export default function RiwayatPage() {
             </Field>
           </div>
           <Field label="Pelanggan" htmlFor="filterCustomer">
-            <SelectInput
+            <CustomerSearchSelect
               id="filterCustomer"
+              customers={customers ?? []}
               value={draftCustomerId}
-              onChange={(e) => setDraftCustomerId(e.target.value)}
-            >
-              <option value="">Semua pelanggan</option>
-              {(customers ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </SelectInput>
+              onChange={setDraftCustomerId}
+              allowEmpty
+              emptyLabel="Semua pelanggan"
+              placeholder="Cari nama atau nomor…"
+            />
           </Field>
           {filterError ? <FormError>{filterError}</FormError> : null}
           <BtnRow>

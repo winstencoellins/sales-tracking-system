@@ -1,4 +1,4 @@
-import { TransactionStatus } from "@/generated/prisma/client";
+import { Prisma, TransactionStatus } from "@/generated/prisma/client";
 import { error, json, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
@@ -22,6 +22,12 @@ const spendInclude = {
   },
 } as const;
 
+function parsePhoneNumber(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
 export async function GET(request: Request) {
   const { response } = await requireSession();
   if (response) return response;
@@ -31,7 +37,12 @@ export async function GET(request: Request) {
 
   const customers = await prisma.customer.findMany({
     where: q
-      ? { name: { contains: q, mode: "insensitive" } }
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { phoneNumber: { contains: q, mode: "insensitive" } },
+          ],
+        }
       : undefined,
     orderBy: { name: "asc" },
     include: spendInclude,
@@ -46,13 +57,25 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const phoneNumber = parsePhoneNumber(body?.phoneNumber);
 
   if (!name) return error("Nama pelanggan wajib diisi.");
 
-  const customer = await prisma.customer.create({
-    data: { name },
-    include: spendInclude,
-  });
-
-  return json(withSpendStats(customer), { status: 201 });
+  try {
+    const customer = await prisma.customer.create({
+      data: { name, phoneNumber },
+      include: spendInclude,
+    });
+    return json(withSpendStats(customer), { status: 201 });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return error(
+        "Pelanggan dengan nama dan nomor telepon yang sama sudah ada.",
+      );
+    }
+    throw err;
+  }
 }

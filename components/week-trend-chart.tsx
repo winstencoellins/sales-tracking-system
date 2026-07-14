@@ -62,7 +62,7 @@ export function WeekTrendChart({ days }: { days: DayPoint[] }) {
               role="listitem"
               className={cx(
                 "flex h-full min-w-0 flex-1 cursor-pointer flex-col items-center gap-2 rounded-lg border-none bg-transparent p-0 outline-none",
-                "focus-visible:ring-2 focus-visible:ring-ink/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--cream,#f7f6f0)]",
+                "focus-visible:ring-2 focus-visible:ring-ink/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--cream,#f4f9f4)]",
               )}
               aria-label={`${formatDateInput(day.dateKey)}: ${rupiah(day.revenue)}`}
               onMouseEnter={() => setHoveredKey(day.dateKey)}

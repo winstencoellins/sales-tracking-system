@@ -1,4 +1,4 @@
-import { TransactionStatus } from "@/generated/prisma/client";
+import { Prisma, TransactionStatus } from "@/generated/prisma/client";
 import { error, json, requireSession } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 
@@ -24,6 +24,12 @@ function withSpendStats<
   };
 }
 
+function parsePhoneNumber(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
 export async function GET(_request: Request, { params }: Params) {
   const { response } = await requireSession();
   if (response) return response;
@@ -46,17 +52,26 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const phoneNumber = parsePhoneNumber(body?.phoneNumber);
 
   if (!name) return error("Nama pelanggan wajib diisi.");
 
   try {
     const customer = await prisma.customer.update({
       where: { id },
-      data: { name },
+      data: { name, phoneNumber },
       include: spendInclude,
     });
     return json(withSpendStats(customer));
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return error(
+        "Pelanggan dengan nama dan nomor telepon yang sama sudah ada.",
+      );
+    }
     return error("Pelanggan tidak ditemukan.", 404);
   }
 }

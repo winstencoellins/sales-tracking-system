@@ -157,7 +157,7 @@ export function FieldRow({
 }
 
 const inputClass =
-  "min-h-[52px] h-auto w-full rounded-box border-[1.5px] border-line bg-card px-4 py-3.5 text-base text-ink transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-muted-foreground focus-visible:border-ink focus-visible:ring-[3px] focus-visible:ring-[rgba(197,214,58,0.35)] md:text-base";
+  "min-h-[52px] h-auto w-full rounded-box border-[1.5px] border-line bg-card px-4 py-3.5 text-base text-ink transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-muted-foreground focus-visible:border-ink focus-visible:ring-[3px] focus-visible:ring-[rgba(197,255,102,0.35)] md:text-base";
 
 export function TextInput({
   className,
@@ -233,9 +233,20 @@ export function DialogMessage({ children }: { children: ReactNode }) {
   );
 }
 
-export function SectionTitle({ children }: { children: React.ReactNode }) {
+export function SectionTitle({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <h2 className="my-4 mb-2.5 text-base font-bold tracking-[-0.02em] text-ink first:mt-1">
+    <h2
+      className={cn(
+        "my-4 mb-2.5 text-base font-bold tracking-[-0.02em] text-ink first:mt-1",
+        className,
+      )}
+    >
       {children}
     </h2>
   );
@@ -258,11 +269,13 @@ export function Dialog({
   title,
   onClose,
   children,
+  wide,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: React.ReactNode;
+  wide?: boolean;
 }) {
   return (
     <ShadcnDialog
@@ -276,7 +289,8 @@ export function Dialog({
         className={cn(
           // Mobile: bottom sheet with horizontal inset
           "top-auto right-auto bottom-[calc(16px+env(safe-area-inset-bottom))] left-1/2 z-80",
-          "max-h-[min(86dvh,640px)] w-[calc(100%-2rem)] max-w-[400px] -translate-x-1/2 translate-y-0",
+          "max-h-[min(86dvh,640px)] w-[calc(100%-2rem)] -translate-x-1/2 translate-y-0",
+          wide ? "max-w-[560px]" : "max-w-[400px]",
           "gap-0 overflow-y-auto overscroll-contain rounded-[28px_28px_24px_24px] bg-card",
           "px-[18px] pt-[18px] pb-5 shadow-[0_20px_50px_rgba(26,26,26,0.18)] ring-0",
           "animate-dialog-rise-in",
@@ -406,9 +420,9 @@ export function SegmentedControl({
           key={opt.value}
           value={opt.value}
           className={cn(
-            "min-h-11 flex-1 rounded-pill px-3.5 py-2.5 text-[0.9rem] font-bold",
-            "data-[pressed]:bg-ink data-[pressed]:text-white",
-            "aria-pressed:bg-ink aria-pressed:text-white",
+            "min-h-11 flex-1 rounded-pill px-3.5 py-2.5 text-sm font-bold",
+            "data-[pressed]:bg-forest data-[pressed]:text-white",
+            "aria-pressed:bg-forest aria-pressed:text-white",
           )}
         >
           {opt.label}
@@ -436,10 +450,10 @@ export function Chip({
       onClick={onClick}
       variant="outline"
       className={cn(
-        "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-4 py-2.5 text-[0.9rem] font-semibold [&_svg]:size-4",
+        "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-pill border-[1.5px] px-4 py-2.5 text-sm font-semibold [&_svg]:size-4",
         active
-          ? "border-ink bg-ink text-white hover:bg-ink hover:text-white"
-          : "border-line bg-card text-ink",
+          ? "border-lime bg-lime text-ink hover:bg-lime-hover hover:text-ink aria-pressed:border-lime aria-pressed:bg-lime aria-pressed:text-ink data-pressed:border-lime data-pressed:bg-lime data-pressed:text-ink"
+          : "border-line bg-card text-ink hover:bg-sage hover:text-ink aria-pressed:bg-card",
       )}
     >
       {children}
@@ -498,7 +512,7 @@ export function ToggleLink({
       variant="link"
       {...props}
       className={cn(
-        "h-auto w-full rounded-none p-2.5 text-center text-[0.95rem] font-bold active:scale-100",
+        "h-auto w-full rounded-none p-2.5 text-center text-sm font-bold active:scale-100",
         className,
       )}
     >

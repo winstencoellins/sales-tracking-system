@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Ban,
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui";
 import { WeekTrendChart } from "@/components/week-trend-chart";
 import { useAnalytics } from "@/hooks/use-durian";
+import { useDateRangeUrlState } from "@/hooks/use-url-filters";
 import { formatDateInput, rupiah, toDateInputValue } from "@/lib/format";
 
 function formatKg(n: number): string {
@@ -49,14 +50,13 @@ function changeLabel(pct: number | null): string | null {
   return `Sama dengan periode sebelumnya`;
 }
 
-export default function BerandaPage() {
+function BerandaPageContent() {
   const today = toDateInputValue();
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
+  const { from, to, setDateRange } = useDateRangeUrlState(today);
 
   const [filterOpen, setFilterOpen] = useState(false);
-  const [draftFrom, setDraftFrom] = useState(today);
-  const [draftTo, setDraftTo] = useState(today);
+  const [draftFrom, setDraftFrom] = useState(from);
+  const [draftTo, setDraftTo] = useState(to);
   const [filterError, setFilterError] = useState("");
 
   const filters = useMemo(() => ({ from, to }), [from, to]);
@@ -89,8 +89,7 @@ export default function BerandaPage() {
       setFilterError("Tanggal mulai tidak boleh setelah tanggal akhir.");
       return;
     }
-    setFrom(draftFrom);
-    setTo(draftTo);
+    setDateRange(draftFrom, draftTo);
     setFilterOpen(false);
   }
 
@@ -117,7 +116,7 @@ export default function BerandaPage() {
 
       <div
         className={cx(
-          "mb-[18px] rounded-[24px] bg-[linear-gradient(145deg,var(--sage)_0%,rgba(197,214,58,0.35)_100%)] px-5 py-[18px] shadow-soft",
+          "mb-[18px] rounded-[24px] bg-[linear-gradient(145deg,var(--sage)_0%,rgba(197,255,102,0.35)_100%)] px-5 py-[18px] shadow-soft",
           isFetching && "opacity-[0.72] transition-opacity duration-150 ease-out",
         )}
       >
@@ -216,7 +215,7 @@ export default function BerandaPage() {
                 "my-2.5 mb-1 flex items-center gap-1.5 text-[0.85rem] font-semibold text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0",
                 changePct !== null &&
                   changePct > 0 &&
-                  "text-ink [&_svg]:text-[#2f6b3a]",
+                  "text-ink [&_svg]:text-success",
                 changePct !== null && changePct < 0 && "[&_svg]:text-danger",
               )}
             >
@@ -334,5 +333,19 @@ export default function BerandaPage() {
         </>
       )}
     </AppShell>
+  );
+}
+
+export default function BerandaPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell subtitle="Ringkasan penjualan">
+          <SkeletonCards count={4} />
+        </AppShell>
+      }
+    >
+      <BerandaPageContent />
+    </Suspense>
   );
 }

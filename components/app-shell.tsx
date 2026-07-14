@@ -62,7 +62,7 @@ export function AppShell({
 
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[430px] pb-[calc(88px+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-transparent bg-[rgba(247,246,240,0.88)] px-4 py-3 pt-[calc(12px+env(safe-area-inset-top))] backdrop-blur-[16px] max-[380px]:px-3.5">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-transparent bg-[rgba(244,249,244,0.88)] px-4 py-3 pt-[calc(12px+env(safe-area-inset-top))] backdrop-blur-[16px] max-[380px]:px-3.5">
         <Link
           href="/profile"
           className="flex min-w-0 items-center gap-3 rounded-pill focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
@@ -97,7 +97,7 @@ export function AppShell({
           onClick={handleSignOut}
           aria-label="Keluar"
           title="Keluar"
-          className="size-11 shrink-0 rounded-full border border-[rgba(232,230,222,0.9)] bg-[rgba(255,255,255,0.72)] shadow-soft"
+          className="size-11 shrink-0 rounded-full border border-[rgba(220,230,222,0.9)] bg-[rgba(255,255,255,0.72)] shadow-soft"
         >
           <LogOut strokeWidth={2} />
         </IconButton>
@@ -107,7 +107,7 @@ export function AppShell({
       </main>
       <nav
         className={cx(
-          "fixed bottom-[calc(10px+env(safe-area-inset-bottom))] left-1/2 z-40 grid w-[min(calc(100%-24px),398px)] -translate-x-1/2 rounded-pill border border-[rgba(232,230,222,0.8)] bg-[rgba(255,255,255,0.94)] p-1 shadow-[0_12px_40px_rgba(26,26,26,0.1)] backdrop-blur-[20px] max-[380px]:w-[calc(100%-16px)]",
+          "fixed bottom-[calc(10px+env(safe-area-inset-bottom))] left-1/2 z-40 grid w-[min(calc(100%-24px),398px)] -translate-x-1/2 rounded-pill border border-[color-mix(in_srgb,var(--line)_65%,transparent)] bg-[rgba(244,249,244,0.92)] p-1 shadow-[0_8px_28px_rgba(10,46,26,0.08)] backdrop-blur-[20px] max-[380px]:w-[calc(100%-16px)]",
           colCount === 6 ? "grid-cols-6" : "grid-cols-5",
         )}
         aria-label="Navigasi utama"
@@ -123,9 +123,11 @@ export function AppShell({
               key={item.href}
               href={item.href}
               className={cx(
-                "flex min-h-[54px] flex-col items-center justify-center gap-0.5 rounded-pill px-0.5 py-1.5 text-center text-[0.72rem] font-semibold leading-[1.15] tracking-[0.01em] transition-[background,color] duration-[180ms] ease-out focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2 max-[380px]:text-[0.68rem] [&_svg]:size-[22px] max-[380px]:[&_svg]:size-5",
+                "flex min-h-[54px] flex-col items-center justify-center gap-0.5 rounded-pill px-0.5 py-1.5 text-center text-[0.72rem] font-semibold leading-[1.15] tracking-[0.01em] transition-[background,color,box-shadow] duration-[180ms] ease-out focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2 max-[380px]:text-[0.68rem] [&_svg]:size-[22px] max-[380px]:[&_svg]:size-5",
                 colCount === 6 && "text-[0.62rem] max-[380px]:text-[0.58rem]",
-                active ? "bg-lime text-ink" : "text-muted-foreground",
+                active
+                  ? "bg-sage text-ink shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--sage-deep)_55%,transparent)]"
+                  : "text-muted-foreground hover:bg-[color-mix(in_srgb,var(--sage)_45%,transparent)] hover:text-ink",
               )}
               aria-current={active ? "page" : undefined}
             >

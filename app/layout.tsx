@@ -1,23 +1,21 @@
 import type { Metadata } from "next";
-import { Lexend, Source_Sans_3, Inter } from "next/font/google";
+import { Source_Serif_4, Work_Sans } from "next/font/google";
 import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-/** Lexend: high readability, designed for reading fluency (good for 40+). */
-const lexend = Lexend({
-  variable: "--font-lexend",
+/** Headings: Work Sans Bold */
+const workSans = Work_Sans({
+  variable: "--font-work-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["600", "700", "800"],
 });
 
-/** Clear secondary face for prices/numbers with strong figure shapes. */
-const sourceSans = Source_Sans_3({
-  variable: "--font-source",
+/** Body / charts: Source Serif 4 */
+const sourceSerif = Source_Serif_4({
+  variable: "--font-source-serif",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -33,7 +31,11 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={cn("h-full", "antialiased", lexend.variable, sourceSans.variable, "font-sans", inter.variable)}
+      className={cn(
+        "h-full font-sans antialiased",
+        workSans.variable,
+        sourceSerif.variable,
+      )}
     >
       <body className="min-h-full">
         <QueryProvider>{children}</QueryProvider>

@@ -20,7 +20,11 @@ export async function GET() {
       name: v.name,
       pricePerKg: v.pricePerKg,
     })),
-    customers: customers.map((c) => ({ id: c.id, name: c.name })),
+    customers: customers.map((c) => ({
+      id: c.id,
+      name: c.name,
+      phoneNumber: c.phoneNumber,
+    })),
     transactions: transactions.map((t) => ({
       id: t.id,
       customerId: t.customerId,
@@ -79,8 +83,12 @@ export async function POST(request: Request) {
       const customerIdMap = new Map<string, string>();
 
       for (const customer of body.customers) {
+        const phone =
+          typeof customer.phoneNumber === "string"
+            ? customer.phoneNumber.trim() || null
+            : null;
         const created = await tx.customer.create({
-          data: { name: customer.name },
+          data: { name: customer.name, phoneNumber: phone },
         });
         customerIdMap.set(customer.id, created.id);
       }

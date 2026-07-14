@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { CustomerSearchSelect } from "@/components/customer-search-select";
 import {
   BtnRow,
   Button,
@@ -13,7 +14,6 @@ import {
   Field,
   FieldRow,
   FormError,
-  SelectInput,
   SkeletonCard,
   SkeletonLine,
   TextInput,
@@ -46,15 +46,19 @@ export function TransactionEditDialog({
   const [weightKg, setWeightKg] = useState("");
   const [quantity, setQuantity] = useState("");
   const [formError, setFormError] = useState("");
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!open || !tx) return;
-    setCustomerId(tx.customerId);
-    setVarietyId(tx.varietyId);
-    setWeightKg(String(Number(tx.weightKg)));
-    setQuantity(String(tx.quantity));
-    setFormError("");
-  }, [open, tx]);
+  const syncKey = open && tx ? tx.id : null;
+  if (syncKey !== syncedKey) {
+    setSyncedKey(syncKey);
+    if (open && tx) {
+      setCustomerId(tx.customerId);
+      setVarietyId(tx.varietyId);
+      setWeightKg(String(Number(tx.weightKg)));
+      setQuantity(String(tx.quantity));
+      setFormError("");
+    }
+  }
 
   const selectedVariety = varieties?.find((v) => v.id === varietyId);
 
@@ -129,17 +133,13 @@ export function TransactionEditDialog({
       ) : (
         <form onSubmit={onSubmit}>
           <Field label="Pelanggan" htmlFor="editCustomer">
-            <SelectInput
+            <CustomerSearchSelect
               id="editCustomer"
+              customers={customers}
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </SelectInput>
+              onChange={setCustomerId}
+              placeholder="Cari nama atau nomor…"
+            />
           </Field>
 
           <Field label="Jenis">

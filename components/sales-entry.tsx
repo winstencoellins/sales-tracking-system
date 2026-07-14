@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { CustomerSearchSelect } from "@/components/customer-search-select";
 import {
   BtnRow,
   Button,
@@ -13,7 +14,6 @@ import {
   Field,
   FieldRow,
   FormError,
-  SelectInput,
   SkeletonCard,
   SkeletonLine,
   TextInput,
@@ -26,6 +26,29 @@ import {
 import { rupiah } from "@/lib/format";
 
 const SELECTED_CUSTOMER_KEY = "durian-selected-customer";
+const SELECTED_CUSTOMER_EVENT = "durian-selected-customer";
+
+function subscribeSelectedCustomer(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(SELECTED_CUSTOMER_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(SELECTED_CUSTOMER_EVENT, onStoreChange);
+  };
+}
+
+function getSelectedCustomerSnapshot() {
+  return localStorage.getItem(SELECTED_CUSTOMER_KEY) ?? "";
+}
+
+function getSelectedCustomerServerSnapshot() {
+  return "";
+}
+
+function writeSelectedCustomer(id: string) {
+  localStorage.setItem(SELECTED_CUSTOMER_KEY, id);
+  window.dispatchEvent(new Event(SELECTED_CUSTOMER_EVENT));
+}
 
 export function SalesEntry({
   open,
@@ -40,53 +63,56 @@ export function SalesEntry({
     useVarieties();
   const createTx = useCreateTransaction();
 
-  const [customerId, setCustomerId] = useState("");
-  const [varietyId, setVarietyId] = useState("");
+  const savedCustomerId = useSyncExternalStore(
+    subscribeSelectedCustomer,
+    getSelectedCustomerSnapshot,
+    getSelectedCustomerServerSnapshot,
+  );
+
+  const [customerId, setCustomerIdState] = useState<string | null>(null);
+  const [varietyId, setVarietyIdState] = useState<string | null>(null);
   const [weightKg, setWeightKg] = useState("");
   const [quantity, setQuantity] = useState("");
   const [formError, setFormError] = useState("");
+  const [wasOpen, setWasOpen] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(SELECTED_CUSTOMER_KEY);
-    if (saved) setCustomerId(saved);
-  }, []);
-
-  useEffect(() => {
-    if (!customerId && customers?.length) {
-      setCustomerId(customers[0].id);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setFormError("");
+      setWeightKg("");
+      setQuantity("");
     }
-  }, [customers, customerId]);
+  }
 
-  useEffect(() => {
-    if (!varietyId && varieties?.length) {
-      setVarietyId(varieties[0].id);
-    }
-  }, [varieties, varietyId]);
+  const preferredCustomerId = customerId ?? savedCustomerId;
+  const resolvedCustomerId =
+    preferredCustomerId &&
+    customers?.some((c) => c.id === preferredCustomerId)
+      ? preferredCustomerId
+      : (customers?.[0]?.id ?? "");
 
-  useEffect(() => {
-    if (customerId) {
-      localStorage.setItem(SELECTED_CUSTOMER_KEY, customerId);
-    }
-  }, [customerId]);
+  const resolvedVarietyId =
+    varietyId && varieties?.some((v) => v.id === varietyId)
+      ? varietyId
+      : (varieties?.[0]?.id ?? "");
 
-  useEffect(() => {
-    if (!open) return;
-    setFormError("");
-    setWeightKg("");
-    setQuantity("");
-  }, [open]);
+  const selectedVariety = varieties?.find((v) => v.id === resolvedVarietyId);
 
-  const selectedVariety = varieties?.find((v) => v.id === varietyId);
+  function setCustomerId(id: string) {
+    setCustomerIdState(id);
+    writeSelectedCustomer(id);
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError("");
 
-    if (!customerId) {
+    if (!resolvedCustomerId) {
       setFormError("Pilih atau tambah pelanggan terlebih dahulu.");
       return;
     }
-    if (!varietyId) {
+    if (!resolvedVarietyId) {
       setFormError("Pilih jenis durian terlebih dahulu.");
       return;
     }
@@ -101,8 +127,8 @@ export function SalesEntry({
 
     try {
       await createTx.mutateAsync({
-        customerId,
-        varietyId,
+        customerId: resolvedCustomerId,
+        varietyId: resolvedVarietyId,
         weightKg: weight,
         quantity: Number.isFinite(qty) ? Math.max(0, Math.round(qty)) : 0,
       });
@@ -149,17 +175,13 @@ export function SalesEntry({
       ) : (
         <form onSubmit={onSubmit}>
           <Field label="Pelanggan" htmlFor="salesCustomer">
-            <SelectInput
+            <CustomerSearchSelect
               id="salesCustomer"
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </SelectInput>
+              customers={customers}
+              value={resolvedCustomerId}
+              onChange={setCustomerId}
+              placeholder="Cari nama atau nomor…"
+            />
           </Field>
 
           <Field label="Jenis">
@@ -167,8 +189,8 @@ export function SalesEntry({
               {varieties.map((v) => (
                 <Chip
                   key={v.id}
-                  active={varietyId === v.id}
-                  onClick={() => setVarietyId(v.id)}
+                  active={resolvedVarietyId === v.id}
+                  onClick={() => setVarietyIdState(v.id)}
                 >
                   {v.name}
                 </Chip>
@@ -222,7 +244,7 @@ export function SalesEntry({
             <Button
               type="submit"
               variant="primary"
-              disabled={createTx.isPending || !customerId}
+              disabled={createTx.isPending || !resolvedCustomerId}
             >
               {createTx.isPending ? "Menyimpan…" : "Simpan"}
             </Button>

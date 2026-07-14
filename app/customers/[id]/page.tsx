@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { use, useMemo, useState, type FormEvent } from "react";
+import { use, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Receipt, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Pencil, Phone, Receipt, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { InvoiceDocument } from "@/components/invoice-document";
+import { TransactionEditDialog } from "@/components/transaction-edit-dialog";
 import { TransactionRow } from "@/components/transaction-row";
 import {
   BtnRow,
@@ -18,9 +20,8 @@ import {
   Field,
   FormError,
   IconButton,
-  SectionTitle,
   SkeletonCard,
-  SkeletonTickets,
+  SkeletonCards,
   TextInput,
 } from "@/components/ui";
 import {
@@ -31,7 +32,9 @@ import {
   useUpdateCustomer,
   useUpdateTransactionStatus,
 } from "@/hooks/use-durian";
-import { rupiah } from "@/lib/format";
+import { rupiah, formatDayGroupLabel, localDateKey } from "@/lib/format";
+import { printInvoiceDocument } from "@/lib/invoice-print";
+import type { Transaction } from "@/lib/types";
 
 const AVATAR_TONES = ["lime", "sage", "yellow"] as const;
 
@@ -77,7 +80,61 @@ export default function CustomerDetailPage({
 
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [formError, setFormError] = useState("");
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [issuedAt, setIssuedAt] = useState(() => new Date());
+
+  const activeTransactions = useMemo(
+    () => (transactions ?? []).filter((t) => t.status === "AKTIF"),
+    [transactions],
+  );
+
+  const selectedTransactions = useMemo(
+    () => activeTransactions.filter((t) => selectedIds.has(t.id)),
+    [activeTransactions, selectedIds],
+  );
+
+  const selectedTotal = useMemo(
+    () => selectedTransactions.reduce((sum, t) => sum + t.subtotal, 0),
+    [selectedTransactions],
+  );
+
+  const dayGroups = useMemo(() => {
+    const byDay = new Map<string, Transaction[]>();
+    for (const tx of transactions ?? []) {
+      const key = localDateKey(tx.soldAt);
+      const list = byDay.get(key) ?? [];
+      list.push(tx);
+      byDay.set(key, list);
+    }
+
+    return Array.from(byDay.keys())
+      .sort((a, b) => b.localeCompare(a))
+      .map((dayKey) => {
+        const items = byDay.get(dayKey) ?? [];
+        const dayTotal = items
+          .filter((t) => t.status === "AKTIF")
+          .reduce((sum, t) => sum + t.subtotal, 0);
+        return { dayKey, items, dayTotal };
+      });
+  }, [transactions]);
+
+  // Drop selections that no longer exist or are no longer active
+  useEffect(() => {
+    const valid = new Set(activeTransactions.map((t) => t.id));
+    setSelectedIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (valid.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [activeTransactions]);
 
   const activeTotal =
     transactions
@@ -90,6 +147,7 @@ export default function CustomerDetailPage({
   function openEdit() {
     if (!customer) return;
     setName(customer.name);
+    setPhoneNumber(customer.phoneNumber ?? "");
     setFormError("");
     setDialogMode("edit");
   }
@@ -104,6 +162,23 @@ export default function CustomerDetailPage({
     setFormError("");
   }
 
+  function toggleSelect(txId: string, selected: boolean) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(txId);
+      else next.delete(txId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === activeTransactions.length) {
+      setSelectedIds(new Set());
+      return;
+    }
+    setSelectedIds(new Set(activeTransactions.map((t) => t.id)));
+  }
+
   async function onSaveEdit(e: FormEvent) {
     e.preventDefault();
     setFormError("");
@@ -113,7 +188,11 @@ export default function CustomerDetailPage({
       return;
     }
     try {
-      await updateCustomer.mutateAsync({ id, name: trimmed });
+      await updateCustomer.mutateAsync({
+        id,
+        name: trimmed,
+        phoneNumber: phoneNumber.trim() || null,
+      });
       closeDialog();
     } catch (err) {
       setFormError(
@@ -171,6 +250,12 @@ export default function CustomerDetailPage({
               <h2 className="m-0 text-[1.35rem] font-extrabold leading-tight tracking-[-0.03em] break-words">
                 {customer.name}
               </h2>
+              {customer.phoneNumber ? (
+                <p className="mt-1.5 mb-0 inline-flex items-center gap-1.5 text-[0.9rem] text-muted-foreground [&_svg]:size-[15px]">
+                  <Phone strokeWidth={2} aria-hidden />
+                  {customer.phoneNumber}
+                </p>
+              ) : null}
               <p className="mt-1.5 mb-0 inline-flex items-center gap-1.5 text-[0.9rem] text-muted-foreground [&_svg]:size-[15px]">
                 <Receipt strokeWidth={2} aria-hidden />
                 {txCount} transaksi
@@ -216,10 +301,30 @@ export default function CustomerDetailPage({
         </>
       )}
 
-      <SectionTitle>Riwayat transaksi</SectionTitle>
+      <div className="mt-5 mb-3 flex items-center justify-between gap-3">
+        <h2 className="m-0 text-base font-bold tracking-[-0.02em] text-ink">
+          Riwayat transaksi
+        </h2>
+        {activeTransactions.length > 0 ? (
+          <div className="flex shrink-0 items-center gap-2.5">
+            <span className="text-[0.82rem] font-semibold tabular-nums text-muted-foreground">
+              {selectedIds.size} invoice
+            </span>
+            <button
+              type="button"
+              className="cursor-pointer border-none bg-transparent p-0 text-[0.82rem] font-bold text-muted-foreground underline-offset-2 hover:text-ink hover:underline"
+              onClick={toggleSelectAll}
+            >
+              {selectedIds.size === activeTransactions.length
+                ? "Hapus pilihan"
+                : "Pilih semua"}
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {loadingTx ? (
-        <SkeletonTickets count={3} />
+        <SkeletonCards count={3} />
       ) : txError ? (
         <Card>
           <ErrorState message="Gagal memuat transaksi." />
@@ -229,27 +334,133 @@ export default function CustomerDetailPage({
           <EmptyState>Belum ada transaksi untuk pelanggan ini.</EmptyState>
         </Card>
       ) : (
-        <div className="ticket-stagger flex flex-col gap-3">
-          {transactions.map((tx) => (
-            <TransactionRow
-              key={tx.id}
-              tx={tx}
-              busy={busy}
-              onCancel={async (txId) => {
-                if (!confirm("Batalkan transaksi ini?")) return;
-                await updateStatus.mutateAsync({ id: txId, status: "BATAL" });
-              }}
-              onRestore={async (txId) => {
-                await updateStatus.mutateAsync({ id: txId, status: "AKTIF" });
-              }}
-              onDelete={async (txId) => {
-                if (!confirm("Hapus transaksi ini secara permanen?")) return;
-                await deleteTx.mutateAsync(txId);
-              }}
-            />
+        <div
+          className={cx(
+            "flex flex-col gap-[22px]",
+            selectedIds.size > 0 && "pb-20",
+          )}
+        >
+          {dayGroups.map(({ dayKey, items, dayTotal }) => (
+            <section key={dayKey} className="flex flex-col gap-2">
+              <div className="mb-0.5 flex items-baseline justify-between gap-3 px-0.5">
+                <h3 className="m-0 text-[0.8rem] font-bold tracking-[0.06em] text-ink uppercase">
+                  {formatDayGroupLabel(dayKey)}
+                </h3>
+                <span className="font-mono text-[0.85rem] font-bold text-ink tabular-nums">
+                  {rupiah(dayTotal)}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {items.map((tx) => (
+                  <TransactionRow
+                    key={tx.id}
+                    tx={tx}
+                    busy={busy}
+                    selectable
+                    selected={selectedIds.has(tx.id)}
+                    onSelectChange={toggleSelect}
+                    onEdit={(row) => setEditingTx(row)}
+                    onCancel={async (txId) => {
+                      if (!confirm("Batalkan transaksi ini?")) return;
+                      await updateStatus.mutateAsync({
+                        id: txId,
+                        status: "BATAL",
+                      });
+                    }}
+                    onRestore={async (txId) => {
+                      await updateStatus.mutateAsync({
+                        id: txId,
+                        status: "AKTIF",
+                      });
+                    }}
+                    onDelete={async (txId) => {
+                      if (!confirm("Hapus transaksi ini secara permanen?"))
+                        return;
+                      await deleteTx.mutateAsync(txId);
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}
+
+      {selectedIds.size > 0 ? (
+        <div className="fixed bottom-[calc(78px+env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(calc(100%-24px),398px)] -translate-x-1/2 items-center justify-between gap-3 rounded-pill border border-[color-mix(in_srgb,var(--line)_65%,transparent)] bg-[rgba(244,249,244,0.96)] px-3.5 py-2.5 shadow-[0_8px_28px_rgba(10,46,26,0.1)] backdrop-blur-[16px] no-print">
+          <div className="min-w-0">
+            <p className="m-0 text-[0.78rem] font-semibold text-muted-foreground">
+              {selectedIds.size} dipilih
+            </p>
+            <p className="m-0 font-mono text-[0.95rem] font-extrabold tabular-nums text-ink">
+              {rupiah(selectedTotal)}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setIssuedAt(new Date());
+              setInvoiceOpen(true);
+            }}
+          >
+            <FileText strokeWidth={2.25} />
+            Pratinjau
+          </Button>
+        </div>
+      ) : null}
+
+      <TransactionEditDialog
+        tx={editingTx}
+        open={editingTx !== null}
+        onClose={() => setEditingTx(null)}
+      />
+
+      <Dialog
+        open={invoiceOpen && selectedTransactions.length > 0 && !!customer}
+        title="Pratinjau invoice"
+        wide
+        onClose={() => setInvoiceOpen(false)}
+      >
+        {customer && selectedTransactions.length > 0 ? (
+          <>
+            <div className="mb-4 overflow-hidden rounded-box border border-line shadow-soft">
+              <InvoiceDocument
+                customer={customer}
+                transactions={selectedTransactions}
+                issuedAt={issuedAt}
+              />
+            </div>
+            <p className="mt-0 mb-3.5 text-[0.84rem] leading-normal text-muted-foreground">
+              Periksa isi invoice di atas, lalu cetak atau simpan sebagai PDF.
+            </p>
+            <BtnRow>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setInvoiceOpen(false)}
+              >
+                Tutup
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => {
+                  printInvoiceDocument({
+                    customerName: customer.name,
+                    phoneNumber: customer.phoneNumber,
+                    transactions: selectedTransactions,
+                    issuedAt,
+                  });
+                }}
+              >
+                Cetak PDF
+              </Button>
+            </BtnRow>
+          </>
+        ) : null}
+      </Dialog>
 
       <Dialog
         open={dialogMode !== null}
@@ -291,6 +502,16 @@ export default function CustomerDetailPage({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nama pelanggan"
                 autoComplete="off"
+              />
+            </Field>
+            <Field label="Nomor telepon" htmlFor="editCustomerPhone">
+              <TextInput
+                id="editCustomerPhone"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="08…"
+                autoComplete="tel"
               />
             </Field>
             {formError ? <FormError>{formError}</FormError> : null}

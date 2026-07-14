@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -18,6 +18,7 @@ import {
   SectionTitle,
 } from "@/components/ui";
 import { useTransactions } from "@/hooks/use-durian";
+import { useDateRangeUrlState } from "@/hooks/use-url-filters";
 import { todayKeyJakarta } from "@/lib/analytics-period";
 import {
   dateInputToEndIso,
@@ -62,9 +63,22 @@ function groupByCustomer(transactions: Transaction[]): CustomerGroup[] {
 }
 
 export default function LaporanPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell subtitle="Generate laporan Excel berdasarkan tanggal">
+          <LoadingState />
+        </AppShell>
+      }
+    >
+      <LaporanPageContent />
+    </Suspense>
+  );
+}
+
+function LaporanPageContent() {
   const today = todayKeyJakarta();
-  const [from, setFrom] = useState(today);
-  const [to, setTo] = useState(today);
+  const { from, to, setDateRange } = useDateRangeUrlState(today);
   const [exportError, setExportError] = useState("");
 
   const filters = useMemo(
@@ -183,7 +197,7 @@ export default function LaporanPage() {
               value={from}
               max={to || undefined}
               onChange={(value) => {
-                setFrom(value);
+                setDateRange(value, to);
                 setExportError("");
               }}
               aria-label="Dari tanggal"
@@ -195,7 +209,7 @@ export default function LaporanPage() {
               value={to}
               min={from || undefined}
               onChange={(value) => {
-                setTo(value);
+                setDateRange(from, value);
                 setExportError("");
               }}
               aria-label="Sampai tanggal"
@@ -219,8 +233,7 @@ export default function LaporanPage() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              setFrom(today);
-              setTo(today);
+              setDateRange(today, today);
               setExportError("");
             }}
           >
@@ -275,25 +288,25 @@ export default function LaporanPage() {
                   <table className="w-full min-w-[720px] border-collapse text-[0.88rem] print:min-w-0">
                     <thead>
                       <tr>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           No
                         </th>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           Tanggal
                         </th>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           Jenis
                         </th>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           Berat (kg)
                         </th>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           Jumlah
                         </th>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           Harga/kg
                         </th>
-                        <th className="bg-ink px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
+                        <th className="bg-forest px-2.5 py-3 text-left font-semibold whitespace-nowrap text-white first:rounded-tl-box last:rounded-tr-box">
                           Subtotal
                         </th>
                       </tr>

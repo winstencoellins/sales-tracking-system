@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
-import { Plus, Search, Sprout } from "lucide-react";
+import { FormEvent, Suspense, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Search, Sprout } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import {
   BtnRow,
@@ -23,12 +23,14 @@ import {
   useUpdateVariety,
   useVarieties,
 } from "@/hooks/use-durian";
+import { useSearchQueryUrlState } from "@/hooks/use-url-filters";
 import { rupiah } from "@/lib/format";
 import type { Variety } from "@/lib/types";
 
 type DialogMode = "create" | "edit" | "delete" | null;
 
 const AVATAR_TONES = ["lime", "sage", "yellow"] as const;
+const PAGE_SIZE = 5;
 
 const toneBg = {
   lime: "bg-lime",
@@ -51,17 +53,36 @@ function dialogTitle(mode: DialogMode) {
 }
 
 export default function JenisPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell subtitle="Atur jenis & harga per kg">
+          <SkeletonCards count={3} />
+        </AppShell>
+      }
+    >
+      <JenisPageContent />
+    </Suspense>
+  );
+}
+
+function JenisPageContent() {
   const { data: varieties, isLoading, error } = useVarieties();
   const createVariety = useCreateVariety();
   const updateVariety = useUpdateVariety();
   const deleteVariety = useDeleteVariety();
 
-  const [query, setQuery] = useState("");
+  const { query, setQuery, page, setPage } = useSearchQueryUrlState({
+    paginated: true,
+  });
   const [dialogMode, setDialogMode] = useState<DialogMode>(null);
   const [activeVariety, setActiveVariety] = useState<Variety | null>(null);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [formError, setFormError] = useState("");
+
+  const totalCount = varieties?.length ?? 0;
+  const hasQuery = query.trim().length > 0;
 
   const filtered = useMemo(() => {
     const list = varieties ?? [];
@@ -73,6 +94,12 @@ export default function JenisPage() {
         String(v.pricePerKg).includes(q),
     );
   }, [varieties, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = filtered.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const pageEnd = pageStart + pageItems.length;
 
   function openCreate() {
     setActiveVariety(null);
@@ -162,14 +189,28 @@ export default function JenisPage() {
   return (
     <AppShell subtitle="Atur jenis & harga per kg">
       <div className="mb-3.5 mt-2 flex items-center justify-between gap-3">
-        <h2 className="m-0 text-[1.55rem] font-bold leading-tight tracking-[-0.02em] text-ink">
-          Jenis Durian.
-        </h2>
+        <div className="min-w-0">
+          <h2 className="m-0 text-[1.55rem] font-bold leading-tight tracking-[-0.02em] text-ink">
+            Jenis Durian.
+          </h2>
+          {!isLoading && !error ? (
+            <p className="m-0 mt-1 text-[0.88rem] font-medium text-muted-foreground">
+              {hasQuery
+                ? `${filtered.length} cocok · ${totalCount} jenis`
+                : `${totalCount} jenis`}
+            </p>
+          ) : null}
+        </div>
         <Button type="button" variant="ghost" size="sm" onClick={openCreate}>
           <Plus strokeWidth={2.25} />
           Tambah
         </Button>
       </div>
+
+      <p className="mb-3.5 mt-0 text-[0.9rem] leading-normal text-muted-foreground">
+        Perubahan harga hanya berlaku untuk transaksi baru. Transaksi lama tetap
+        memakai harga saat penjualan dicatat.
+      </p>
 
       <div className="relative mb-3.5">
         <Search
@@ -179,7 +220,7 @@ export default function JenisPage() {
         />
         <input
           type="search"
-          className="w-full min-h-[52px] rounded-pill border-[1.5px] border-solid border-line bg-card py-3 pr-[18px] pl-[46px] text-ink outline-none transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-muted-foreground focus:border-sage-deep focus:shadow-[0_0_0_3px_rgba(197,214,58,0.18)]"
+          className="w-full min-h-[52px] rounded-pill border-[1.5px] border-solid border-line bg-card py-3 pr-[18px] pl-[46px] text-ink outline-none transition-[border-color,box-shadow] duration-150 ease-out placeholder:text-muted-foreground focus:border-sage-deep focus:shadow-[0_0_0_3px_rgba(197,255,102,0.18)]"
           placeholder="Cari jenis…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -204,57 +245,90 @@ export default function JenisPage() {
           <EmptyState>Tidak ada jenis yang cocok dengan pencarian.</EmptyState>
         </Card>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {filtered.map((v) => (
-            <article
-              key={v.id}
-              className="flex items-center justify-between gap-3 rounded-[20px] border-[1.5px] border-solid border-line bg-card px-4 py-3.5 shadow-soft"
-            >
-              <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div
-                  className={cx(
-                    "grid size-12 shrink-0 place-items-center rounded-full text-ink [&_svg]:size-[22px]",
-                    toneBg[avatarTone(v.name)],
-                  )}
-                  aria-hidden
-                >
-                  <Sprout strokeWidth={2.25} />
-                </div>
-                <div className="min-w-0">
-                  <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[1.05rem] font-bold tracking-[-0.02em] text-ink">
-                    {v.name}
+        <>
+          <div className="flex flex-col gap-2.5">
+            {pageItems.map((v) => (
+              <article
+                key={v.id}
+                className="flex items-center justify-between gap-3 rounded-[20px] border-[1.5px] border-solid border-line bg-card px-4 py-3.5 shadow-soft"
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div
+                    className={cx(
+                      "grid size-12 shrink-0 place-items-center rounded-full text-ink [&_svg]:size-[22px]",
+                      toneBg[avatarTone(v.name)],
+                    )}
+                    aria-hidden
+                  >
+                    <Sprout strokeWidth={2.25} />
                   </div>
-                  <div className="mt-0.5 font-mono text-[0.88rem] font-medium tabular-nums text-muted-foreground">
-                    {rupiah(v.pricePerKg)}/kg
+                  <div className="min-w-0">
+                    <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[1.05rem] font-bold tracking-[-0.02em] text-ink">
+                      {v.name}
+                    </div>
+                    <div className="mt-0.5 font-mono text-[0.88rem] font-medium tabular-nums text-muted-foreground">
+                      {rupiah(v.pricePerKg)}/kg
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <button
-                  type="button"
-                  className="min-h-7 cursor-pointer rounded-pill border-none bg-sage px-3 py-1.5 text-[0.75rem] font-bold leading-none tracking-[-0.01em] text-ink transition-[transform,opacity] duration-100 ease-out active:enabled:scale-96 disabled:cursor-not-allowed disabled:opacity-55 hover:enabled:bg-sage-deep"
-                  onClick={() => openEdit(v)}
-                >
-                  Ubah
-                </button>
-                <button
-                  type="button"
-                  className="min-h-7 cursor-pointer rounded-pill border-none bg-danger-bg px-3 py-1.5 text-[0.75rem] font-bold leading-none tracking-[-0.01em] text-danger transition-[transform,opacity] duration-100 ease-out active:enabled:scale-96 disabled:cursor-not-allowed disabled:opacity-55 hover:enabled:bg-[#f3d9d3]"
-                  onClick={() => openDelete(v)}
-                  disabled={deleting}
-                >
-                  Hapus
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <button
+                    type="button"
+                    className="min-h-7 cursor-pointer rounded-pill border-none bg-sage px-3 py-1.5 text-[0.75rem] font-bold leading-none tracking-[-0.01em] text-ink transition-[transform,opacity] duration-100 ease-out active:enabled:scale-96 disabled:cursor-not-allowed disabled:opacity-55 hover:enabled:bg-sage-deep"
+                    onClick={() => openEdit(v)}
+                  >
+                    Ubah
+                  </button>
+                  <button
+                    type="button"
+                    className="min-h-7 cursor-pointer rounded-pill border-none bg-danger-bg px-3 py-1.5 text-[0.75rem] font-bold leading-none tracking-[-0.01em] text-danger transition-[transform,opacity] duration-100 ease-out active:enabled:scale-96 disabled:cursor-not-allowed disabled:opacity-55 hover:enabled:bg-[#f3d9d3]"
+                    onClick={() => openDelete(v)}
+                    disabled={deleting}
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
 
-      <p className="mt-4 mb-0 text-[0.9rem] leading-normal text-muted-foreground">
-        Perubahan harga hanya berlaku untuk transaksi baru. Transaksi lama tetap
-        memakai harga saat penjualan dicatat.
-      </p>
+          {totalPages > 1 ? (
+            <div className="mt-3.5 flex flex-col gap-2.5">
+              <p className="m-0 text-center text-[0.84rem] font-medium text-muted-foreground tabular-nums">
+                Menampilkan {pageStart + 1}–{pageEnd} dari {filtered.length}
+                {hasQuery ? ` (total ${totalCount})` : ""}
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage(currentPage - 1)}
+                  aria-label="Halaman sebelumnya"
+                >
+                  <ChevronLeft strokeWidth={2.25} />
+                  Sebelumnya
+                </Button>
+                <span className="text-[0.88rem] font-bold text-ink tabular-nums">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage(currentPage + 1)}
+                  aria-label="Halaman berikutnya"
+                >
+                  Berikutnya
+                  <ChevronRight strokeWidth={2.25} />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
 
       <Dialog
         open={dialogMode !== null}
@@ -272,6 +346,7 @@ export default function JenisPage() {
               <Button
                 type="button"
                 variant="ghost"
+                size="sm"
                 onClick={closeDialog}
                 disabled={deleting}
               >
@@ -280,6 +355,7 @@ export default function JenisPage() {
               <Button
                 type="button"
                 variant="danger"
+                size="sm"
                 onClick={onConfirmDelete}
                 disabled={deleting}
               >
@@ -314,12 +390,18 @@ export default function JenisPage() {
               <Button
                 type="button"
                 variant="ghost"
+                size="sm"
                 onClick={closeDialog}
                 disabled={saving}
               >
                 Batal
               </Button>
-              <Button type="submit" variant="primary" disabled={saving}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={saving}
+              >
                 {saving
                   ? "Menyimpan…"
                   : dialogMode === "edit"

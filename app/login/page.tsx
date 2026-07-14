@@ -45,7 +45,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[radial-gradient(ellipse_90%_60%_at_50%_-20%,rgba(197,214,58,0.35),transparent_55%),linear-gradient(180deg,var(--sage)_0%,var(--cream)_55%)] px-4 py-6 pt-[max(24px,env(safe-area-inset-top))] pb-[max(24px,env(safe-area-inset-bottom))] max-[380px]:px-3.5">
+    <div className="flex min-h-dvh items-center justify-center bg-[radial-gradient(ellipse_90%_60%_at_50%_-20%,rgba(197,255,102,0.35),transparent_55%),linear-gradient(180deg,var(--sage)_0%,var(--cream)_55%)] px-4 py-6 pt-[max(24px,env(safe-area-inset-top))] pb-[max(24px,env(safe-area-inset-bottom))] max-[380px]:px-3.5">
       <div className="flex w-full max-w-[380px] flex-col gap-5">
         <div className="flex flex-col items-center px-1 text-center">
           <div
@@ -110,7 +110,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-dvh items-center justify-center bg-[radial-gradient(ellipse_90%_60%_at_50%_-20%,rgba(197,214,58,0.35),transparent_55%),linear-gradient(180deg,var(--sage)_0%,var(--cream)_55%)] px-4 py-6">
+        <div className="flex min-h-dvh items-center justify-center bg-[radial-gradient(ellipse_90%_60%_at_50%_-20%,rgba(197,255,102,0.35),transparent_55%),linear-gradient(180deg,var(--sage)_0%,var(--cream)_55%)] px-4 py-6">
           <div className="flex w-full max-w-[380px] flex-col gap-5">
             <div className="w-full rounded-card bg-card px-[18px] py-5 shadow-card">
               <p className="text-muted-foreground">Memuat…</p>

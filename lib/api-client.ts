@@ -67,12 +67,12 @@ export const api = {
   getCustomers: (q?: string) =>
     request<Customer[]>(`/api/customers${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   getCustomer: (id: string) => request<Customer>(`/api/customers/${id}`),
-  createCustomer: (body: { name: string }) =>
+  createCustomer: (body: { name: string; phoneNumber?: string | null }) =>
     request<Customer>("/api/customers", {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  updateCustomer: (id: string, body: { name: string }) =>
+  updateCustomer: (id: string, body: { name: string; phoneNumber?: string | null }) =>
     request<Customer>(`/api/customers/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
