@@ -15,7 +15,11 @@ export function InvoiceDocument({
 }) {
   const total = transactions.reduce((sum, t) => sum + t.subtotal, 0);
   const dateKey = toDateInputValue(issuedAt);
-  const invoiceNo = buildInvoiceNumber(issuedAt, transactions.length);
+  const invoiceNo = buildInvoiceNumber(
+    issuedAt,
+    customer.name,
+    transactions.map((t) => t.id).join(","),
+  );
 
   return (
     <div className="overflow-hidden rounded-[4px] bg-white text-ink">

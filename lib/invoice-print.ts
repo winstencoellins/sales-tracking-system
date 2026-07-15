@@ -1,8 +1,50 @@
 import { formatDateInput, toDateInputValue, rupiah } from "@/lib/format";
 import type { Transaction } from "@/lib/types";
 
-export function buildInvoiceNumber(issuedAt: Date, itemCount: number): string {
-  return `${issuedAt.getFullYear()}${String(issuedAt.getMonth() + 1).padStart(2, "0")}${String(issuedAt.getDate()).padStart(2, "0")}${String(itemCount).padStart(2, "0")}`;
+export function buildInvoiceNumber(
+  issuedAt: Date,
+  customerName: string,
+  uniqueKey = "",
+): string {
+  const y = issuedAt.getFullYear();
+  const m = String(issuedAt.getMonth() + 1).padStart(2, "0");
+  const d = String(issuedAt.getDate()).padStart(2, "0");
+  const namePart = slugFromCustomerName(customerName);
+  const fingerprint = shortFingerprint(
+    `${customerName}|${y}-${m}-${d}|${uniqueKey}|${issuedAt.getTime()}`,
+  );
+  return `${y}${m}${d}-${namePart}-${fingerprint}`;
+}
+
+/** Letters/digits from the customer name, up to 6 chars (e.g. "Budi Santoso" → "BUDISA"). */
+function slugFromCustomerName(name: string): string {
+  const slug = name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
+  if (slug) return slug;
+
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
+  return initials || "CUST";
+}
+
+/** Short stable base36 fingerprint for uniqueness. */
+function shortFingerprint(input: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).toUpperCase().padStart(4, "0").slice(-4);
 }
 
 function escapeHtml(value: string): string {
@@ -33,7 +75,11 @@ function buildInvoiceHtml({
   issuedAt: Date;
 }): { html: string; invoiceNo: string } {
   const total = transactions.reduce((sum, t) => sum + t.subtotal, 0);
-  const invoiceNo = buildInvoiceNumber(issuedAt, transactions.length);
+  const invoiceNo = buildInvoiceNumber(
+    issuedAt,
+    customerName,
+    transactions.map((t) => t.id).join(","),
+  );
   const dateLabel = formatDateInput(toDateInputValue(issuedAt));
 
   const rows = transactions
